@@ -1,0 +1,29 @@
+{
+  "name": "streak",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check-types": "tsc --noEmit",
+    "check": "npm run check-types && npm test",
+    "dev": "vite --port 3100",
+    "build": "vite build",
+    "preview": "vite preview --port 3100"
+  },
+  "dependencies": {
+    "@chain/casino-sdk": "file:./casino-sdk",
+    "@vitejs/plugin-react": "^5.0.4",
+    "penpal": "^7.0.4",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "viem": "^2.52.2",
+    "vite": "^7.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

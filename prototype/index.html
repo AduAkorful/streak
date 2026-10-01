@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <title>Streak — Card Prediction Casino Game</title>
+  <meta name="description" content="Build streaks by predicting card links. Cash out or push your luck." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ================================================================
+       DESIGN TOKENS
+       ================================================================ */
+    :root {
+      --bg-primary:    #060a14;
+      --bg-secondary:  #0c1220;
+      --bg-card-area:  #0e1529;
+      --bg-surface:    rgba(16, 24, 48, 0.65);
+      --bg-glass:      rgba(255, 255, 255, 0.03);
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --border-glow:   rgba(212, 175, 55, 0.15);
+
+      --gold:          #d4af37;
+      --gold-light:    #f0d060;
+      --gold-dim:      rgba(212, 175, 55, 0.5);
+      --gold-faint:    rgba(212, 175, 55, 0.12);
+
+      --text-primary:  #f0f0f2;
+      --text-secondary:#8a8ea0;
+      --text-muted:    #5a5e72;
+
+      --red:           #ef4444;
+      --red-glow:      rgba(239, 68, 68, 0.25);
+      --blue:          #3b82f6;
+      --blue-glow:     rgba(59, 130, 246, 0.25);
+      --amber:         #d4af37;
+      --amber-glow:    rgba(212, 175, 55, 0.25);
+      --green:         #22c55e;
+      --green-glow:    rgba(34, 197, 94, 0.3);
+
+      --suit-red:      #e63946;
+      --suit-black:    #f0f0f2;
+
+      --font-sans:   'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono:   'JetBrains Mono', 'SF Mono', monospace;
+
+      --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-bounce:   cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-spring:   cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      --dur-fast:      180ms;
+      --dur-normal:    300ms;
+      --dur-slow:      500ms;
+      --dur-reveal:    700ms;
+
+      --radius-sm:  8px;
+      --radius-md:  14px;
+      --radius-lg:  20px;
+      --radius-xl:  28px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button {
+      font-family: inherit;
+      border: none;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* APP SHELL */
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-sizing: border-border-box;
+    }
+
+    /* AMBIENT BG */
+    .bg-ambient {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .bg-ambient::before {
+      content: '';
+      position: absolute; top: -40%; left: -20%; width: 140%; height: 100%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(99, 60, 180, 0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 10%, rgba(212, 175, 55, 0.05) 0%, transparent 50%);
+      animation: ambientDrift 20s ease-in-out infinite alternate;
+    }
+    .bg-ambient::after {
+      content: '';
+      position: absolute; bottom: -20%; right: -10%; width: 80%; height: 60%;
+      background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.04) 0%, transparent 70%);
+      animation: ambientDrift 15s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes ambientDrift {
+      0%   { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(20px, -10px) scale(1.05); }
+    }
+
+    /* PARTICLES */
+    .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .particle {
+      position: absolute; width: 2px; height: 2px;
+      background: var(--gold); border-radius: 50%; opacity: 0;
+      animation: particleFloat linear infinite;
+    }
+    @keyframes particleFloat {
+      0%   { opacity: 0; transform: translateY(0) scale(0); }
+      15%  { opacity: 0.6; transform: translateY(-20px) scale(1); }
+      85%  { opacity: 0.3; }
+      100% { opacity: 0; transform: translateY(-120px) scale(0.3); }
+    }
+
+    /* HEADER */
+    .header {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; flex-shrink: 0;
+    }
+    .header-logo {
+      display: flex; align-items: center; gap: 8px; cursor: default;
+    }
+    .header-logo-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(212,175,55,0.05));
+      border: 1px solid var(--border-glow); display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 15px rgba(212,175,55,0.15); transition: transform var(--dur-fast) ease;
+    }
+    .header-logo-icon svg { width: 16px; height: 16px; fill: url(#logo-gold-grad); filter: drop-shadow(0 0 4px var(--amber-glow)); }
+    .header-title {
+      font-size: 20px; font-weight: 900; letter-spacing: 2.5px; text-transform: uppercase;
+      background: linear-gradient(135deg, #fff 0%, var(--gold-light) 40%, var(--gold) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+      position: relative;
+    }
+    .header-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-glass); border: 1px solid var(--border-subtle);
+      transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+    .header-btn svg { width: 18px; height: 18px; color: var(--text-secondary); }
+
+    /* MULTIPLIER */
+    .multiplier-section {
+      position: relative; z-index: 5; text-align: center;
+      padding: 4px 20px 12px; flex-shrink: 0;
+    }
+    .multiplier-badge {
+      display: inline-flex; align-items: baseline; gap: 2px;
+      padding: 6px 24px; border-radius: var(--radius-xl);
+      background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.03));
+      border: 1px solid var(--border-glow);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      transition: all var(--dur-normal) var(--ease-out);
+    }
+    .multiplier-value {
+      font-family: var(--font-mono); font-size: 42px; font-weight: 700;
+      background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      line-height: 1; transition: all var(--dur-slow) var(--ease-bounce);
+    }
+    .multiplier-suffix { font-size: 20px; font-weight: 600; color: var(--gold-dim); }
+
+    .multiplier-badge.win {
+      border-color: rgba(34,197,94,0.3);
+      background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(34,197,94,0.03));
+      animation: winPulse 1.5s ease-in-out 2;
+    }
+    .multiplier-badge.loss {
+      border-color: rgba(239,68,68,0.2);
+      background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02));
+    }
+    @keyframes winPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      50%      { box-shadow: 0 0 30px 4px rgba(34,197,94,0.15); }
+    }
+
+    /* ROUTE DISPLAY */
+    .route-display {
+      margin-top: 8px; font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted);
+    }
+    .route-display span { color: var(--text-secondary); }
+    .route-display .route-arrow { margin: 0 4px; opacity: 0.4; }
+
+    /* STREAK PIPS */
+    .streak-pips { display: flex; gap: 4px; justify-content: center; margin-top: 6px; }
+    .streak-pip {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.06);
+      transition: all var(--dur-normal) var(--ease-out);
+    }
+    .streak-pip.filled { background: var(--gold); border-color: var(--gold-light); box-shadow: 0 0 8px var(--amber-glow); }
+    .streak-pip.failed { background: var(--red); border-color: #f87171; box-shadow: 0 0 8px var(--red-glow); }
+
+    /* CARD ARENA */
+    .card-arena {
+      position: relative; z-index: 5;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 0 20px; min-height: 0;
+    }
+    .card-stage { position: relative; perspective: 800px; }
+
+    /* PLAYING CARD */
+    .playing-card {
+      position: relative; width: 140px; height: 196px; border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 10px; transition: transform var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out);
+      transform-style: preserve-3d;
+    }
+    .playing-card.glow {
+      box-shadow: 0 0 0 1px rgba(212,175,55,0.2), 0 0 40px rgba(212,175,55,0.12),
+                  0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .playing-card.dealing { animation: cardDeal var(--dur-reveal) var(--ease-out) forwards; }
+    @keyframes cardDeal {
+      0%   { transform: translateY(-40px) rotateY(180deg) scale(0.8); opacity: 0; }
+      40%  { opacity: 1; }
+      100% { transform: translateY(0) rotateY(0) scale(1); }
+    }
+
+    .card-corner { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+    .card-corner.bottom { align-self: flex-end; transform: rotate(180deg); }
+    .card-rank-label { font-family: var(--font-mono); font-size: 22px; font-weight: 700; }
+    .card-suit-icon { font-size: 16px; line-height: 1; }
+    .card-center-suit { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 52px; opacity: 0.15; }
+    .card-red { color: var(--suit-red); }
+    .card-black { color: #1a1a2e; }
+
+    /* CARD BACK */
+    .playing-card.face-down {
+      background: linear-gradient(135deg, #1a1a3e, #0d0d2a);
+      border: 2px solid var(--border-glow);
+    }
+    .card-back-pattern {
+      position: absolute; inset: 6px; border-radius: 8px;
+      border: 1px solid rgba(212,175,55,0.15);
+      background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(212,175,55,0.04) 4px, rgba(212,175,55,0.04) 5px),
+                  repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(212,175,55,0.04) 4px, rgba(212,175,55,0.04) 5px);
+    }
+    .card-back-logo {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-family: var(--font-sans); font-size: 14px; font-weight: 800; letter-spacing: 2px;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    /* LINK INDICATOR */
+    .card-link-indicator {
+      position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%);
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 3px 12px; border-radius: 20px; white-space: nowrap;
+      animation: fadeInUp var(--dur-normal) var(--ease-out);
+    }
+    .card-link-indicator.color { background: var(--red-glow); color: var(--red); }
+    .card-link-indicator.suit  { background: var(--blue-glow); color: var(--blue); }
+    .card-link-indicator.rank  { background: var(--amber-glow); color: var(--amber); }
+    @keyframes fadeInUp {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+      100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* ROUTE CHAIN */
+    .route-chain {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      margin-top: 36px; min-height: 48px; flex-wrap: nowrap;
+      overflow-x: auto; overflow-y: hidden; max-width: 100%;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .route-chain::-webkit-scrollbar { display: none; }
+
+    .mini-card {
+      width: 34px; height: 48px; border-radius: 6px; background: #fff;
+      flex-shrink: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; line-height: 1.1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      animation: miniCardAppear var(--dur-slow) var(--ease-bounce) forwards;
+    }
+    @keyframes miniCardAppear {
+      0%   { transform: scale(0) translateY(10px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .mini-card .mini-rank { font-family: var(--font-mono); font-size: 11px; }
+    .mini-card .mini-suit { font-size: 12px; }
+    .route-chain-arrow { color: var(--text-muted); font-size: 10px; flex-shrink: 0; opacity: 0.5; }
+    .route-chain-link-tag {
+      font-size: 7px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      padding: 1px 4px; border-radius: 3px; flex-shrink: 0;
+    }
+    .route-chain-link-tag.color { background: var(--red-glow); color: var(--red); }
+    .route-chain-link-tag.suit  { background: var(--blue-glow); color: var(--blue); }
+    .route-chain-link-tag.rank  { background: var(--amber-glow); color: var(--amber); }
+
+    /* CONTROLS */
+    .controls {
+      position: relative; z-index: 10;
+      padding: 0 16px 16px; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    /* LINK BUTTONS */
+    .link-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .link-btn {
+      position: relative; padding: 14px 8px; border-radius: var(--radius-md);
+      font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      text-align: center; overflow: hidden;
+      transition: all var(--dur-fast) var(--ease-out); border: 1px solid transparent;
+    }
+    .link-btn::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
+    }
+    .link-btn:active { transform: scale(0.96); }
+    .link-btn .link-btn-label { position: relative; z-index: 1; }
+    .link-btn .link-btn-meta {
+      position: relative; z-index: 1; display: block;
+      font-size: 10px; font-weight: 500; letter-spacing: 0; text-transform: none;
+      margin-top: 4px; opacity: 0.7;
+    }
+
+    .link-btn.color {
+      background: linear-gradient(180deg, rgba(239,68,68,0.12), rgba(239,68,68,0.06));
+      border-color: rgba(239,68,68,0.2); color: #f87171;
+    }
+    .link-btn.color:hover { background: linear-gradient(180deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1)); }
+    .link-btn.color::before { background: radial-gradient(ellipse at center bottom, rgba(239,68,68,0.15), transparent 70%); }
+    .link-btn.color:hover::before { opacity: 1; }
+
+    .link-btn.suit {
+      background: linear-gradient(180deg, rgba(59,130,246,0.12), rgba(59,130,246,0.06));
+      border-color: rgba(59,130,246,0.2); color: #60a5fa;
+    }
+    .link-btn.suit:hover { background: linear-gradient(180deg, rgba(59,130,246,0.2), rgba(59,130,246,0.1)); }
+    .link-btn.suit::before { background: radial-gradient(ellipse at center bottom, rgba(59,130,246,0.15), transparent 70%); }
+    .link-btn.suit:hover::before { opacity: 1; }
+
+    .link-btn.rank {
+      background: linear-gradient(180deg, rgba(212,175,55,0.12), rgba(212,175,55,0.06));
+      border-color: rgba(212,175,55,0.2); color: var(--gold-light);
+    }
+    .link-btn.rank:hover { background: linear-gradient(180deg, rgba(212,175,55,0.2), rgba(212,175,55,0.1)); }
+    .link-btn.rank::before { background: radial-gradient(ellipse at center bottom, rgba(212,175,55,0.15), transparent 70%); }
+    .link-btn.rank:hover::before { opacity: 1; }
+
+    .link-btn:disabled { opacity: 0.25; pointer-events: none; filter: grayscale(0.7); }
+    .link-btn.selected { transform: scale(1.02); box-shadow: 0 0 20px var(--amber-glow); }
+
+    /* CASHOUT BTN */
+    .cashout-btn {
+      width: 100%; padding: 16px; border-radius: var(--radius-md);
+      font-size: 15px; font-weight: 700; letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff;
+      position: relative; overflow: hidden;
+      transition: all var(--dur-fast) var(--ease-out);
+      box-shadow: 0 4px 20px rgba(34,197,94,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+    }
+    .cashout-btn::before {
+      content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
+      background: linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0% { transform: translateX(-50%); } 100% { transform: translateX(50%); } }
+    .cashout-btn:hover {
+      background: linear-gradient(135deg, #15803d, #16a34a);
+      box-shadow: 0 6px 30px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    .cashout-btn:active { transform: scale(0.98); }
+
+    /* DEAL BTN */
+    .deal-btn {
+      width: 100%; padding: 16px; border-radius: var(--radius-md);
+      font-size: 15px; font-weight: 700; letter-spacing: 0.5px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-light)); color: #0a0e1a;
+      position: relative; overflow: hidden;
+      transition: all var(--dur-fast) var(--ease-out);
+      box-shadow: 0 4px 20px var(--amber-glow), inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .deal-btn:hover { box-shadow: 0 6px 30px rgba(212,175,55,0.4), inset 0 1px 0 rgba(255,255,255,0.35); }
+    .deal-btn:active { transform: scale(0.98); }
+    .deal-btn:disabled {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      box-shadow: none;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    /* WAGER */
+    .wager-section {
+      display: flex; align-items: center; gap: 8px; padding: 4px;
+      border-radius: var(--radius-md); background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+    }
+    .wager-adjust {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+      font-size: 18px; font-weight: 600; color: var(--text-secondary);
+      transition: all var(--dur-fast) var(--ease-out); flex-shrink: 0;
+    }
+    .wager-adjust:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .wager-adjust:active { transform: scale(0.92); }
+    .wager-display {
+      flex: 1; text-align: center;
+      font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--text-primary);
+    }
+    .wager-display .currency { font-size: 13px; color: var(--text-secondary); font-weight: 500; margin-right: 2px; }
+
+    /* QUICK BETS */
+    .quick-bets { display: flex; gap: 6px; justify-content: center; }
+    .quick-bet {
+      padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+      color: var(--text-secondary); transition: all var(--dur-fast) var(--ease-out);
+    }
+    .quick-bet:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); border-color: rgba(255,255,255,0.12); }
+    .quick-bet:active { transform: scale(0.94); }
+
+    /* ODDS BAR */
+    .odds-bar { display: flex; justify-content: center; gap: 16px; padding: 6px 0 2px; }
+    .odds-item { text-align: center; font-size: 10px; color: var(--text-muted); letter-spacing: 0.5px; }
+    .odds-item strong {
+      display: block; font-family: var(--font-mono); font-size: 12px;
+      font-weight: 700; color: var(--text-secondary); margin-bottom: 1px;
+    }
+
+    /* RESULT OVERLAY */
+    .result-overlay {
+      position: absolute; inset: 0; z-index: 500;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px; opacity: 0; pointer-events: none;
+      background: rgba(6, 10, 20, 0.82);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      transition: opacity var(--dur-normal) var(--ease-out);
+    }
+    .result-overlay.visible { opacity: 1; pointer-events: auto; }
+    .result-card {
+      width: 100%; max-width: 340px; background: var(--bg-card-area);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+      padding: 28px 20px; display: flex; flex-direction: column; align-items: center; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+      animation: resultCardPop var(--dur-slow) var(--ease-bounce);
+    }
+    .result-overlay.win .result-card { border-color: rgba(34,197,94,0.3); box-shadow: 0 0 40px rgba(34,197,94,0.15), 0 20px 60px rgba(0,0,0,0.7); }
+    .result-overlay.loss .result-card { border-color: rgba(239,68,68,0.3); box-shadow: 0 0 40px rgba(239,68,68,0.15), 0 20px 60px rgba(0,0,0,0.7); }
+
+    @keyframes resultCardPop {
+      0%   { transform: scale(0.85) translateY(20px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .result-emoji { font-size: 52px; line-height: 1; margin-bottom: 8px; }
+    .result-text { font-size: 26px; font-weight: 800; }
+    .result-text.win { color: var(--green); }
+    .result-text.loss { color: var(--red); }
+    .result-amount {
+      font-family: var(--font-mono); font-size: 22px; font-weight: 700;
+      color: var(--text-primary); margin-top: 6px;
+    }
+    .result-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .result-action {
+      margin-top: 20px; width: 100%; padding: 14px; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 700; background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      color: #0a0e1a; transition: all var(--dur-fast) var(--ease-out); cursor: pointer;
+    }
+    .result-action:hover { box-shadow: 0 4px 20px var(--amber-glow); }
+
+    /* ANIMATIONS FOR BROKEN / WIN STREAK */
+    .playing-card.broken {
+      animation: cardShakeLoss 0.6s var(--ease-bounce) forwards !important;
+      border: 2px solid var(--red) !important;
+    }
+    @keyframes cardShakeLoss {
+      0%   { transform: scale(1) rotate(0); }
+      15%  { transform: scale(1.05) rotate(-6deg); }
+      30%  { transform: scale(1.05) rotate(6deg); }
+      45%  { transform: scale(1.02) rotate(-4deg); }
+      60%  { transform: scale(1.02) rotate(4deg); }
+      75%  { transform: scale(0.98) rotate(-1deg); }
+      100% { transform: scale(0.96) rotate(0); opacity: 0.85; filter: grayscale(0.4); }
+    }
+
+    .playing-card.hit-win {
+      animation: cardWinFlare 0.7s var(--ease-out) forwards;
+      border: 2px solid var(--green) !important;
+    }
+    @keyframes cardWinFlare {
+      0%   { transform: scale(1); box-shadow: 0 0 0 rgba(34,197,94,0); }
+      50%  { transform: scale(1.08); box-shadow: 0 0 40px rgba(34,197,94,0.6); }
+      100% { transform: scale(1); box-shadow: 0 0 20px rgba(34,197,94,0.3); }
+    }
+
+    .lucky-mode-btn {
+      padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.5px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle);
+      color: var(--text-muted); transition: all var(--dur-fast) ease; cursor: pointer;
+    }
+    .lucky-mode-btn.active {
+      background: rgba(34,197,94,0.15); border-color: var(--green); color: var(--green);
+    }
+
+    .safe-bottom { height: env(safe-area-inset-bottom, 0); flex-shrink: 0; }
+
+    /* CARD PICKER */
+    .card-picker { display: flex; flex-direction: column; gap: 8px; }
+    .picker-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-muted); text-align: center;
+    }
+    .rank-picker {
+      display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;
+    }
+    .rank-chip {
+      flex: 0 0 calc(14.28% - 4px); height: 34px; border-radius: 8px; font-family: var(--font-mono);
+      font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+      color: var(--text-secondary); transition: all var(--dur-fast) var(--ease-out);
+      touch-action: manipulation;
+    }
+    .rank-chip:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); border-color: rgba(255,255,255,0.12); }
+    .rank-chip:active { transform: scale(0.92); }
+    .rank-chip.selected {
+      background: var(--gold-faint); border-color: var(--gold); color: var(--gold-light);
+      box-shadow: 0 0 12px rgba(212,175,55,0.15);
+    }
+    .suit-picker { display: flex; gap: 6px; justify-content: center; }
+    .suit-chip {
+      width: 48px; height: 40px; border-radius: 10px;
+      font-size: 20px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+      transition: all var(--dur-fast) var(--ease-out);
+    }
+    .suit-chip:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }
+    .suit-chip:active { transform: scale(0.9); }
+    .suit-chip.selected {
+      border-color: var(--gold); box-shadow: 0 0 12px rgba(212,175,55,0.15);
+    }
+    .suit-chip.selected.red-suit { background: rgba(230,57,70,0.12); border-color: var(--suit-red); box-shadow: 0 0 12px rgba(230,57,70,0.15); }
+    .suit-chip.selected.black-suit { background: rgba(240,240,242,0.08); border-color: rgba(240,240,242,0.3); box-shadow: 0 0 12px rgba(240,240,242,0.08); }
+    .suit-chip.red-suit { color: var(--suit-red); }
+    .suit-chip.black-suit { color: var(--text-primary); }
+
+    /* HELP MODAL */
+    .modal-overlay {
+      position: absolute; inset: 0; z-index: 200;
+      background: rgba(6, 10, 20, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      opacity: 0; pointer-events: none; transition: opacity var(--dur-normal) var(--ease-out);
+    }
+    .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+    .modal-card {
+      width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto;
+      background: var(--bg-card-area); border: 1px solid var(--border-glow);
+      border-radius: var(--radius-lg); padding: 24px; color: var(--text-primary);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6); display: flex; flex-direction: column; gap: 16px;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-size: 18px; font-weight: 700; color: var(--gold-light); }
+    .modal-close {
+      width: 32px; height: 32px; border-radius: 50%; background: var(--bg-glass);
+      border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: var(--text-secondary); cursor: pointer;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .rules-list { display: flex; flex-direction: column; gap: 12px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+    .rule-item { display: flex; gap: 12px; align-items: flex-start; }
+    .rule-num {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--gold-faint);
+      border: 1px solid var(--gold-dim); color: var(--gold-light); font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    .rule-text strong { color: var(--text-primary); }
+    .link-table {
+      width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px;
+    }
+    .link-table th, .link-table td {
+      padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border-subtle);
+    }
+    .link-table th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 10px; }
+    .link-table td strong { font-family: var(--font-mono); color: var(--gold-light); }
+    .rtp-badge {
+      background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: var(--radius-sm); padding: 10px; text-align: center; font-size: 12px; color: var(--green);
+    }
+
+    /* MENU MODAL & SETTINGS */
+    .setting-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px; font-weight: 500;
+    }
+    .setting-label { display: flex; flex-direction: column; gap: 2px; }
+    .setting-sub { font-size: 11px; color: var(--text-muted); }
+    .toggle-switch {
+      width: 44px; height: 24px; border-radius: 12px; background: rgba(255,255,255,0.1);
+      position: relative; cursor: pointer; transition: background var(--dur-fast) ease;
+    }
+    .toggle-switch.active { background: var(--gold); }
+    .toggle-switch::after {
+      content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+      border-radius: 50%; background: #fff; transition: transform var(--dur-fast) ease;
+    }
+    .toggle-switch.active::after { transform: translateX(20px); }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 4px;
+    }
+    .stat-box {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm); padding: 10px; text-align: center;
+    }
+    .stat-val { font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--gold-light); }
+    .stat-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
+
+    .contract-info {
+      font-size: 11px; color: var(--text-muted); line-height: 1.6;
+      background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); padding: 10px;
+    }
+    .contract-info strong { color: var(--text-secondary); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* MOBILE RESPONSIVE MEDIA QUERIES */
+    @media (max-width: 480px) {
+      .header { padding: 10px 16px; }
+      .header-title { font-size: 18px; letter-spacing: 2px; }
+      .multiplier-value { font-size: 36px; }
+      .controls { padding: 0 12px 12px; gap: 8px; }
+      .link-btn { padding: 12px 6px; font-size: 11px; }
+      .link-btn .link-btn-meta { font-size: 9px; }
+      .deal-btn, .cashout-btn { padding: 14px; font-size: 14px; }
+      .modal-card { max-width: 100%; padding: 20px; border-radius: var(--radius-md); }
+    }
+
+    @media (max-height: 740px) {
+      .playing-card { width: 118px; height: 164px; padding: 8px; }
+      .card-rank-label { font-size: 18px; }
+      .card-suit-icon { font-size: 14px; }
+      .card-center-suit { font-size: 42px; }
+      .multiplier-section { padding: 2px 16px 6px; }
+      .multiplier-value { font-size: 32px; }
+      .route-chain { margin-top: 24px; min-height: 40px; }
+      .mini-card { width: 28px; height: 40px; font-size: 9px; }
+      .rank-chip { height: 30px; font-size: 11px; }
+      .suit-chip { height: 34px; font-size: 18px; }
+    }
+
+    @media (min-width: 481px) {
+      #app { border-left: 1px solid var(--border-subtle); border-right: 1px solid var(--border-subtle); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-ambient"></div>
+  <div class="particles" id="particles"></div>
+
+  <div id="app">
+    <header class="header">
+      <button class="header-btn" aria-label="Settings" id="btn-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <div class="header-logo">
+        <div class="header-logo-icon">
+          <svg viewBox="0 0 24 24">
+            <defs>
+              <linearGradient id="logo-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f0d060" />
+                <stop offset="100%" stop-color="#d4af37" />
+              </linearGradient>
+            </defs>
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+        </div>
+        <span class="header-title">STREAK</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-btn" aria-label="Session Stats" id="btn-stats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+        </button>
+        <button class="header-btn" aria-label="How to play" id="btn-help">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="multiplier-section" id="multiplier-section">
+      <div class="multiplier-badge" id="multiplier-badge">
+        <span class="multiplier-value" id="multiplier-value">0.00</span>
+        <span class="multiplier-suffix">×</span>
+      </div>
+      <div class="route-display" id="route-display">Place a wager to begin</div>
+      <div class="streak-pips" id="streak-pips"></div>
+    </section>
+
+    <section class="card-arena" id="card-arena">
+      <div class="card-stage" id="card-stage"></div>
+      <div class="route-chain" id="route-chain"></div>
+    </section>
+
+    <section class="controls" id="controls">
+      <div id="state-wager">
+        <div class="card-picker">
+          <span class="picker-label">1. Choose your anchor card</span>
+          <div class="rank-picker" id="rank-picker">
+            <button class="rank-chip" data-rank="0">A</button>
+            <button class="rank-chip" data-rank="1">2</button>
+            <button class="rank-chip" data-rank="2">3</button>
+            <button class="rank-chip" data-rank="3">4</button>
+            <button class="rank-chip" data-rank="4">5</button>
+            <button class="rank-chip" data-rank="5">6</button>
+            <button class="rank-chip" data-rank="6">7</button>
+            <button class="rank-chip" data-rank="7">8</button>
+            <button class="rank-chip" data-rank="8">9</button>
+            <button class="rank-chip" data-rank="9">10</button>
+            <button class="rank-chip" data-rank="10">J</button>
+            <button class="rank-chip" data-rank="11">Q</button>
+            <button class="rank-chip" data-rank="12">K</button>
+          </div>
+          <div class="suit-picker" id="suit-picker">
+            <button class="suit-chip black-suit" data-suit="0">♠</button>
+            <button class="suit-chip red-suit" data-suit="1">♥</button>
+            <button class="suit-chip red-suit" data-suit="2">♦</button>
+            <button class="suit-chip black-suit" data-suit="3">♣</button>
+          </div>
+        </div>
+        <div class="wager-section" style="margin-top:8px">
+          <button class="wager-adjust" id="wager-minus">−</button>
+          <div class="wager-display"><span class="currency">$</span><span id="wager-amount">1.00</span></div>
+          <button class="wager-adjust" id="wager-plus">+</button>
+        </div>
+        <div class="quick-bets" style="margin-top:6px">
+          <button class="quick-bet" data-amount="0.50">$0.50</button>
+          <button class="quick-bet" data-amount="1.00">$1.00</button>
+          <button class="quick-bet" data-amount="5.00">$5.00</button>
+          <button class="quick-bet" data-amount="10.00">$10</button>
+          <button class="quick-bet" data-amount="25.00">$25</button>
+        </div>
+        <div style="margin-top:8px">
+          <span class="picker-label">2. Select prediction link</span>
+          <div class="link-buttons" style="margin-top:4px" id="wager-links">
+            <button class="link-btn color" data-link="color"><span class="link-btn-label">Color</span><span class="link-btn-meta">1/2 · $1.92</span></button>
+            <button class="link-btn suit" data-link="suit"><span class="link-btn-label">Suit</span><span class="link-btn-meta">1/4 · $3.84</span></button>
+            <button class="link-btn rank" data-link="rank"><span class="link-btn-label">Rank</span><span class="link-btn-meta">1/13 · $12.48</span></button>
+          </div>
+        </div>
+        <button class="deal-btn" id="btn-deal" style="margin-top:8px" disabled>Select card & link to deal</button>
+      </div>
+
+      <div id="state-waiting" style="display:none">
+        <div class="odds-bar">
+          <div class="odds-item"><strong id="wait-link">COLOR</strong>Predicting</div>
+          <div class="odds-item"><strong id="wait-prob">1/2</strong>Probability</div>
+          <div class="odds-item"><strong id="wait-next">1.92×</strong>If hit</div>
+        </div>
+      </div>
+
+      <div id="state-action" style="display:none">
+        <button class="cashout-btn" id="btn-cashout">Cash Out <span id="cashout-value">$1.92</span></button>
+        <div class="link-buttons" style="margin-top:10px" id="action-links">
+          <button class="link-btn color" data-link="color"><span class="link-btn-label">Color</span><span class="link-btn-meta">×2</span></button>
+          <button class="link-btn suit" data-link="suit"><span class="link-btn-label">Suit</span><span class="link-btn-meta">×4</span></button>
+          <button class="link-btn rank" data-link="rank"><span class="link-btn-label">Rank</span><span class="link-btn-meta">×13</span></button>
+        </div>
+      </div>
+    </section>
+
+    <div class="safe-bottom"></div>
+
+    <div class="result-overlay" id="result-overlay">
+      <div class="result-card">
+        <div class="result-emoji" id="result-emoji">💥</div>
+        <div class="result-text" id="result-text">Streak Broken</div>
+        <div class="result-amount" id="result-amount">−$1.00</div>
+        <div class="result-sub" id="result-sub">Better luck next draw!</div>
+        <button class="result-action" id="btn-play-again">Play Again</button>
+      </div>
+    </div>
+
+    <!-- Help / Rules Modal -->
+    <div class="modal-overlay" id="help-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">How to Play Streak</span>
+          <button class="modal-close" id="modal-close">✕</button>
+        </div>
+        <div class="rules-list">
+          <div class="rule-item">
+            <div class="rule-num">1</div>
+            <div class="rule-text"><strong>Pick Your Anchor Card</strong> — Choose any starting card (rank & suit) and set your wager.</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-num">2</div>
+            <div class="rule-text"><strong>Predict Next Link</strong> — Guess how the next card will connect to your anchor:</div>
+          </div>
+          <table class="link-table">
+            <thead>
+              <tr><th>Link</th><th>Match Rule</th><th>Odds</th><th>Factor</th></tr>
+            </thead>
+            <tbody>
+              <tr><td style="color:#f87171;font-weight:700">Color</td><td>Same Red/Black</td><td>1/2 (50%)</td><td><strong>×2.00</strong></td></tr>
+              <tr><td style="color:#60a5fa;font-weight:700">Suit</td><td>Same ♠♥♦♣</td><td>1/4 (25%)</td><td><strong>×4.00</strong></td></tr>
+              <tr><td style="color:var(--gold-light);font-weight:700">Rank</td><td>Same A–K</td><td>1/13 (7.7%)</td><td><strong>×13.00</strong></td></tr>
+            </tbody>
+          </table>
+          <div class="rule-item">
+            <div class="rule-num">3</div>
+            <div class="rule-text"><strong>Build & Push Your Luck</strong> — Every successful link increases your total multiplier. Choose to <strong>Cash Out</strong> or select another link to keep building your streak!</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-num">4</div>
+            <div class="rule-text"><strong>Max Payout</strong> — Multiplier cap is <strong>245.76×</strong> (at odds product 256). If a link fails, the streak ends.</div>
+          </div>
+        </div>
+        <div class="rtp-badge">
+          🛡️ <strong>96% House RTP</strong> · Decentralized On-Chain VRF Randomness
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">Game Settings</span>
+          <button class="modal-close" id="settings-modal-close">✕</button>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">
+            <span>Sound Effects</span>
+            <span class="setting-sub">Card deal, flip & result audio</span>
+          </div>
+          <div class="toggle-switch active" id="toggle-sound"></div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">
+            <span>Fast Deal / Turbo</span>
+            <span class="setting-sub">Faster card dealing speed</span>
+          </div>
+          <div class="toggle-switch" id="toggle-turbo"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session Stats & Fairness Modal -->
+    <div class="modal-overlay" id="stats-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">Session Stats & Fairness</span>
+          <button class="modal-close" id="stats-modal-close">✕</button>
+        </div>
+
+        <div style="margin-top:4px">
+          <span class="picker-label" style="text-align:left">Performance Overview</span>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-val" id="stat-best-streak">0</div>
+              <div class="stat-lbl">Best Streak</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-max-mult">0.00×</div>
+              <div class="stat-lbl">Max Multiplier</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-rounds">0</div>
+              <div class="stat-lbl">Rounds Played</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-win-rate">0%</div>
+              <div class="stat-lbl">Link Win Rate</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <span class="picker-label" style="text-align:left">Protocol & Fairness Verification</span>
+          <div class="contract-info">
+            <div><strong>Engine:</strong> StreakGame.sol (v2.0)</div>
+            <div><strong>Interface:</strong> ICasinoGameV2 (Solidity 0.8.30)</div>
+            <div><strong>VRF Seed:</strong> <span style="font-family:var(--font-mono);color:var(--gold-light)">0x7d...f92a (Verified)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUITS = ['\u2660', '\u2665', '\u2666', '\u2663'];
+    const SUIT_COLORS = [0, 1, 1, 0];
+    const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    const LINK_FACTORS = { color: 2, suit: 4, rank: 13 };
+    const MAX_ODDS = 256;
+    const RTP = 0.96;
+
+    const randomCard = () => Math.floor(Math.random() * 52);
+    const cardSuit = c => Math.floor(c / 13);
+    const cardRank = c => c % 13;
+    const cardColor = c => SUIT_COLORS[cardSuit(c)];
+    const suitSymbol = c => SUITS[cardSuit(c)];
+    const rankLabel = c => RANKS[cardRank(c)];
+    const isRed = c => cardColor(c) === 1;
+
+    function checkLink(anchor, drawn, link) {
+      if (link === 'color') return cardColor(anchor) === cardColor(drawn);
+      if (link === 'suit')  return cardSuit(anchor) === cardSuit(drawn);
+      if (link === 'rank')  return cardRank(anchor) === cardRank(drawn);
+      return false;
+    }
+
+    const isLinkAvailable = (op, link) => op * LINK_FACTORS[link] <= MAX_ODDS;
+    const availableLinks = op => ['color','suit','rank'].filter(l => isLinkAvailable(op, l));
+    const cashoutMultiplier = op => RTP * op;
+
+    let state = {
+      phase: 'WAGER', wager: 1.00, selectedLink: null,
+      pickedRank: null, pickedSuit: null,
+      anchorCard: null, drawnCard: null, oddsProduct: 1, streakLength: 0,
+      routeHistory: [], cardHistory: [], lastWin: null,
+      bestStreak: 0, maxMult: 0, roundsPlayed: 0, totalLinks: 0, successfulLinks: 0,
+    };
+
+    function updateStatsDisplay() {
+      $('stat-best-streak').textContent = state.bestStreak;
+      $('stat-max-mult').textContent = state.maxMult.toFixed(2) + '×';
+      $('stat-rounds').textContent = state.roundsPlayed;
+      const winRate = state.totalLinks > 0 ? Math.round((state.successfulLinks / state.totalLinks) * 100) : 0;
+      $('stat-win-rate').textContent = winRate + '%';
+    }
+
+    function pickedCardId() {
+      if (state.pickedRank === null || state.pickedSuit === null) return null;
+      return state.pickedSuit * 13 + state.pickedRank;
+    }
+
+    function checkDealAvailability() {
+      const dealBtn = $('btn-deal');
+      const cardReady = state.pickedRank !== null && state.pickedSuit !== null;
+      const linkReady = state.selectedLink !== null;
+      const ready = cardReady && linkReady;
+
+      dealBtn.disabled = !ready;
+      if (ready) {
+        dealBtn.textContent = 'Deal';
+        $('route-display').innerHTML = `Ready! Predicting <span>${state.selectedLink}</span>`;
+      } else {
+        const missing = [];
+        if (state.pickedRank === null) missing.push('Rank');
+        if (state.pickedSuit === null) missing.push('Suit');
+        if (!linkReady) missing.push('Link');
+        dealBtn.textContent = 'Select ' + missing.join(', ') + ' to Deal';
+        $('route-display').innerHTML = 'Select your card & link to begin';
+      }
+    }
+
+    function updateCardPreview() {
+      if (state.phase !== 'WAGER') return;
+      const c = pickedCardId();
+      if (c === null) {
+        renderCard(0, { faceDown: true });
+      } else {
+        renderCard(c, { glow: true, pendingLink: state.selectedLink });
+      }
+      checkDealAvailability();
+    }
+
+    const $ = id => document.getElementById(id);
+    const cardStage = $('card-stage');
+    const routeChain = $('route-chain');
+
+    function initParticles() {
+      const c = $('particles');
+      for (let i = 0; i < 20; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random()*100+'%';
+        p.style.top = (50+Math.random()*50)+'%';
+        p.style.animationDuration = (3+Math.random()*4)+'s';
+        p.style.animationDelay = Math.random()*5+'s';
+        const s = (1+Math.random()*2)+'px';
+        p.style.width = s; p.style.height = s;
+        c.appendChild(p);
+      }
+    }
+
+    function renderCard(cardId, opts = {}) {
+      const { faceDown, dealing, glow, pendingLink, broken, hitWin } = opts;
+      if (faceDown) {
+        cardStage.innerHTML = `<div class="playing-card face-down ${dealing?'dealing':''}">
+          <div class="card-back-pattern"></div><div class="card-back-logo">S</div></div>`;
+        return;
+      }
+      const cc = isRed(cardId) ? 'card-red' : 'card-black';
+      cardStage.innerHTML = `<div class="playing-card ${cc} ${dealing?'dealing':''} ${glow?'glow':''} ${broken?'broken':''} ${hitWin?'hit-win':''}">
+        <div class="card-corner top"><span class="card-rank-label">${rankLabel(cardId)}</span><span class="card-suit-icon">${suitSymbol(cardId)}</span></div>
+        <span class="card-center-suit">${suitSymbol(cardId)}</span>
+        <div class="card-corner bottom"><span class="card-rank-label">${rankLabel(cardId)}</span><span class="card-suit-icon">${suitSymbol(cardId)}</span></div>
+        ${pendingLink ? `<div class="card-link-indicator ${pendingLink}">${pendingLink}</div>` : ''}
+      </div>`;
+    }
+
+    function renderRouteChain() {
+      let h = '';
+      state.cardHistory.forEach((c, i) => {
+        if (i > 0) {
+          const e = state.routeHistory[i-1];
+          if (e) h += `<span class="route-chain-link-tag ${e.link}">${e.link[0].toUpperCase()}</span>`;
+          h += '<span class="route-chain-arrow">\u203A</span>';
+        }
+        const cc = isRed(c) ? 'card-red' : 'card-black';
+        h += `<div class="mini-card ${cc}"><span class="mini-rank">${rankLabel(c)}</span><span class="mini-suit">${suitSymbol(c)}</span></div>`;
+      });
+      routeChain.innerHTML = h;
+      routeChain.scrollLeft = routeChain.scrollWidth;
+    }
+
+    function updateMultiplier() {
+      const m = state.oddsProduct === 1 ? 0 : cashoutMultiplier(state.oddsProduct);
+      $('multiplier-value').textContent = m.toFixed(2);
+    }
+
+    function updateRouteDisplay() {
+      const rd = $('route-display');
+      if (!state.routeHistory.length) { rd.innerHTML = state.phase === 'WAGER' ? 'Place a wager to begin' : 'Waiting for draw\u2026'; return; }
+      const parts = state.routeHistory.filter(r => r.success).map(r => `<span>${r.link[0].toUpperCase()+r.link.slice(1)}</span>`);
+      rd.innerHTML = parts.join('<span class="route-arrow">\u2192</span>') || 'Waiting\u2026';
+    }
+
+    function updateStreakPips() {
+      let h = '';
+      for (let i = 0; i < 8; i++) {
+        if (i < state.streakLength) h += '<div class="streak-pip filled"></div>';
+        else if (i === state.streakLength && state.phase === 'RESULT' && !state.lastWin) h += '<div class="streak-pip failed"></div>';
+        else h += '<div class="streak-pip"></div>';
+      }
+      $('streak-pips').innerHTML = h;
+    }
+
+    function showState(phase) {
+      $('state-wager').style.display  = phase === 'WAGER' ? 'block' : 'none';
+      $('state-waiting').style.display = phase === 'WAITING' ? 'block' : 'none';
+      $('state-action').style.display  = phase === 'ACTION' ? 'block' : 'none';
+    }
+
+    function setPhase(p) { state.phase = p; showState(p); }
+
+    function updateAvailableLinks() {
+      document.querySelectorAll('#action-links .link-btn').forEach(btn => {
+        const link = btn.dataset.link;
+        const ok = isLinkAvailable(state.oddsProduct, link);
+        btn.disabled = !ok;
+        const m = btn.querySelector('.link-btn-meta');
+        if (m && state.oddsProduct > 1) {
+          const nextOdds = state.oddsProduct * LINK_FACTORS[link];
+          const nm = cashoutMultiplier(nextOdds);
+          const winVal = (state.wager * nm).toFixed(2);
+          m.textContent = ok ? `→ $${winVal} (${nm.toFixed(2)}×)` : 'Locked';
+        }
+      });
+    }
+
+    function updateLinkMetas() {
+      // Update wager links
+      document.querySelectorAll('#wager-links .link-btn').forEach(btn => {
+        const link = btn.dataset.link;
+        const probStr = link === 'color' ? '1/2' : link === 'suit' ? '1/4' : '1/13';
+        const mult = cashoutMultiplier(LINK_FACTORS[link]);
+        const winVal = (state.wager * mult).toFixed(2);
+        const m = btn.querySelector('.link-btn-meta');
+        if (m) m.textContent = `${probStr} · $${winVal}`;
+      });
+      // Update action links if active
+      if (state.phase === 'ACTION') updateAvailableLinks();
+    }
+
+    function startGame() {
+      const anchor = pickedCardId();
+      state.anchorCard = anchor; state.oddsProduct = 1; state.streakLength = 0;
+      state.routeHistory = []; state.cardHistory = [anchor]; state.lastWin = null;
+
+      renderCard(anchor, { dealing: true, glow: true, pendingLink: state.selectedLink });
+      renderRouteChain(); updateMultiplier(); updateRouteDisplay(); updateStreakPips();
+
+      const link = state.selectedLink;
+      $('wait-link').textContent = link.toUpperCase();
+      $('wait-prob').textContent = '1/' + LINK_FACTORS[link];
+      $('wait-next').textContent = cashoutMultiplier(LINK_FACTORS[link]).toFixed(2) + '\u00D7';
+
+      setPhase('WAITING');
+      setTimeout(resolveRandomness, 1200 + Math.random() * 800);
+    }
+
+    function resolveRandomness() {
+      const link = state.selectedLink;
+      const drawn = randomCard();
+      state.drawnCard = drawn;
+      const success = checkLink(state.anchorCard, drawn, link);
+      state.routeHistory.push({ card: drawn, link, success });
+      state.cardHistory.push(drawn);
+
+      if (success) {
+        state.oddsProduct *= LINK_FACTORS[link];
+        state.streakLength++; state.anchorCard = drawn;
+        renderCard(drawn, { dealing: true, glow: true, hitWin: true });
+        renderRouteChain(); updateMultiplier(); updateRouteDisplay(); updateStreakPips();
+
+        // Update stats
+        state.roundsPlayed++;
+        state.totalLinks++;
+        state.successfulLinks++;
+        state.bestStreak = Math.max(state.bestStreak, state.streakLength);
+        state.maxMult = Math.max(state.maxMult, cashoutMultiplier(state.oddsProduct));
+        updateStatsDisplay();
+
+        const links = availableLinks(state.oddsProduct);
+        if (!links.length) { setTimeout(() => showResult(true), 600); return; }
+        $('cashout-value').textContent = '$' + (state.wager * cashoutMultiplier(state.oddsProduct)).toFixed(2);
+        updateAvailableLinks();
+        setPhase('ACTION');
+      } else {
+        state.roundsPlayed++;
+        state.totalLinks++;
+        updateStatsDisplay();
+        state.anchorCard = drawn;
+        renderCard(drawn, { dealing: true, broken: true });
+        renderRouteChain(); updateStreakPips();
+        setTimeout(() => showResult(false), 900);
+      }
+    }
+
+    function continueWithLink(link) {
+      state.selectedLink = link;
+      renderCard(state.anchorCard, { glow: true, pendingLink: link });
+      $('wait-link').textContent = link.toUpperCase();
+      $('wait-prob').textContent = '1/' + LINK_FACTORS[link];
+      $('wait-next').textContent = cashoutMultiplier(state.oddsProduct * LINK_FACTORS[link]).toFixed(2) + '\u00D7';
+      setPhase('WAITING');
+      setTimeout(resolveRandomness, 1000 + Math.random() * 600);
+    }
+
+    function showResult(won) {
+      state.lastWin = won; state.phase = 'RESULT'; updateStreakPips();
+      const ov = $('result-overlay');
+      ov.className = 'result-overlay visible ' + (won ? 'win' : 'loss');
+      $('multiplier-badge').className = 'multiplier-badge ' + (won ? 'win' : 'loss');
+      if (won) {
+        $('result-emoji').textContent = '🎉';
+        $('result-text').textContent = 'You Won!';
+        $('result-text').className = 'result-text win';
+        const payout = (state.wager * cashoutMultiplier(state.oddsProduct)).toFixed(2);
+        $('result-amount').textContent = `+$${payout}`;
+        $('result-sub').textContent = `Payout at ${cashoutMultiplier(state.oddsProduct).toFixed(2)}× multiplier`;
+      } else {
+        $('result-emoji').textContent = '💥';
+        $('result-text').textContent = 'Streak Broken';
+        $('result-text').className = 'result-text loss';
+        $('result-amount').textContent = `−$${state.wager.toFixed(2)}`;
+        $('result-sub').textContent = 'Drawn card did not match link predicate';
+      }
+    }
+
+    function playAgain() {
+      $('result-overlay').className = 'result-overlay';
+      $('multiplier-badge').className = 'multiplier-badge';
+      Object.assign(state, { phase:'WAGER', oddsProduct:1, streakLength:0, routeHistory:[], cardHistory:[], anchorCard:null, lastWin:null, pickedRank:null, pickedSuit:null, selectedLink:null });
+      cardStage.innerHTML = ''; routeChain.innerHTML = '';
+      document.querySelectorAll('#rank-picker .rank-chip').forEach(x => x.classList.remove('selected'));
+      document.querySelectorAll('#suit-picker .suit-chip').forEach(x => x.classList.remove('selected'));
+      document.querySelectorAll('#state-wager .link-btn').forEach(x => x.classList.remove('selected'));
+      $('multiplier-value').textContent = '0.00';
+      $('streak-pips').innerHTML = '';
+      updateCardPreview();
+      setPhase('WAGER');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initParticles();
+
+      // Rank picker
+      document.querySelectorAll('#rank-picker .rank-chip').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#rank-picker .rank-chip').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        state.pickedRank = parseInt(b.dataset.rank);
+        updateCardPreview();
+      }));
+
+      // Suit picker
+      document.querySelectorAll('#suit-picker .suit-chip').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#suit-picker .suit-chip').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        state.pickedSuit = parseInt(b.dataset.suit);
+        updateCardPreview();
+      }));
+
+      // Wager controls
+      $('wager-minus').addEventListener('click', () => {
+        state.wager = Math.max(0.50, state.wager - (state.wager > 5 ? 5 : 0.50));
+        $('wager-amount').textContent = state.wager.toFixed(2);
+        updateLinkMetas();
+      });
+      $('wager-plus').addEventListener('click', () => {
+        state.wager = Math.min(100, state.wager + (state.wager >= 5 ? 5 : 0.50));
+        $('wager-amount').textContent = state.wager.toFixed(2);
+        updateLinkMetas();
+      });
+      document.querySelectorAll('.quick-bet').forEach(b => b.addEventListener('click', () => {
+        state.wager = parseFloat(b.dataset.amount);
+        $('wager-amount').textContent = state.wager.toFixed(2);
+        updateLinkMetas();
+      }));
+
+      // Link selection
+      document.querySelectorAll('#state-wager .link-btn').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#state-wager .link-btn').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        state.selectedLink = b.dataset.link;
+        updateCardPreview();
+      }));
+
+      $('btn-deal').addEventListener('click', () => {
+        if (state.pickedRank === null || state.pickedSuit === null || state.selectedLink === null) return;
+        startGame();
+      });
+
+      document.querySelectorAll('#action-links .link-btn').forEach(b => b.addEventListener('click', () => { if (!b.disabled) continueWithLink(b.dataset.link); }));
+      $('btn-cashout').addEventListener('click', () => showResult(true));
+      $('btn-play-again').addEventListener('click', playAgain);
+
+      // Help Modal triggers
+      const helpModal = $('help-modal');
+      const settingsModal = $('settings-modal');
+      const statsModal = $('stats-modal');
+
+      $('btn-help').addEventListener('click', () => helpModal.classList.add('visible'));
+      $('modal-close').addEventListener('click', () => helpModal.classList.remove('visible'));
+      helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.classList.remove('visible'); });
+
+      // Settings Modal triggers
+      $('btn-settings').addEventListener('click', () => settingsModal.classList.add('visible'));
+      $('settings-modal-close').addEventListener('click', () => settingsModal.classList.remove('visible'));
+      settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) settingsModal.classList.remove('visible'); });
+
+      // Stats Modal triggers
+      $('btn-stats').addEventListener('click', () => statsModal.classList.add('visible'));
+      $('stats-modal-close').addEventListener('click', () => statsModal.classList.remove('visible'));
+      statsModal.addEventListener('click', (e) => { if (e.target === statsModal) statsModal.classList.remove('visible'); });
+
+      // Settings: Toggles
+      $('toggle-sound').addEventListener('click', function() { this.classList.toggle('active'); });
+      $('toggle-turbo').addEventListener('click', function() { this.classList.toggle('active'); });
+
+      // Initial card preview (face-down) and validation
+      updateCardPreview();
+      updateLinkMetas();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "gameId": "StreakGame",
+  "apiVersion": 1,
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "name": "Streak",
+      "description": "Build a card-link streak with live on-chain randomness and cash out after every hit."
+    }
+  },
+  "presentation": {
+    "mode": "full-iframe",
+    "hostPanels": { "openSession": false, "history": false, "status": false }
+  },
+  "capabilities": {
+    "openSession": true,
+    "submitAction": true,
+    "forfeitExpiredSession": true,
+    "cancelStuckRandomness": true,
+    "resize": true
+  }
+}
